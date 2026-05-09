@@ -1,0 +1,171 @@
+-- FlareX by Grok - Steal a Brainrot
+local player = game.Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local ProximityPromptService = game:GetService("ProximityPromptService")
+
+local ENABLED = false
+local AUTO_TP_BASE = true
+local connection = nil
+local TP_SPEED = 185
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "FlareX"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+local mainButton = Instance.new("TextButton")
+mainButton.Size = UDim2.new(0, 85, 0, 85)
+mainButton.Position = UDim2.new(0, 15, 1, -110)
+mainButton.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+mainButton.Text = "FLAREX"
+mainButton.TextColor3 = Color3.fromRGB(0, 255, 200)
+mainButton.TextScaled = true
+mainButton.Font = Enum.Font.GothamBold
+mainButton.Parent = screenGui
+
+Instance.new("UICorner", mainButton).CornerRadius = UDim.new(1, 0)
+local stroke = Instance.new("UIStroke", mainButton)
+stroke.Thickness = 4
+stroke.Color = Color3.fromRGB(0, 255, 200)
+
+local menu = Instance.new("Frame")
+menu.Size = UDim2.new(0, 260, 0, 260)
+menu.Position = UDim2.new(0.5, -130, 0.5, -130)
+menu.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+menu.Visible = false
+menu.Parent = screenGui
+Instance.new("UICorner", menu).CornerRadius = UDim.new(0, 16)
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1,0,0,45)
+title.BackgroundTransparency = 1
+title.Text = "FLAREX MENU"
+title.TextColor3 = Color3.fromRGB(0, 255, 200)
+title.TextScaled = true
+title.Font = Enum.Font.GothamBold
+title.Parent = menu
+
+local tpBtn = Instance.new("TextButton")
+tpBtn.Size = UDim2.new(0.88,0,0,50)
+tpBtn.Position = UDim2.new(0.06,0,0,55)
+tpBtn.BackgroundColor3 = Color3.fromRGB(30,30,30)
+tpBtn.Text = "Semi TP : OFF"
+tpBtn.TextColor3 = Color3.new(1,1,1)
+tpBtn.TextScaled = true
+tpBtn.Font = Enum.Font.GothamSemibold
+tpBtn.Parent = menu
+Instance.new("UICorner", tpBtn).CornerRadius = UDim.new(0,10)
+
+local baseBtn = Instance.new("TextButton")
+baseBtn.Size = UDim2.new(0.88,0,0,50)
+baseBtn.Position = UDim2.new(0.06,0,0,115)
+baseBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+baseBtn.Text = "Auto TP Base : ON"
+baseBtn.TextColor3 = Color3.new(1,1,1)
+baseBtn.TextScaled = true
+baseBtn.Font = Enum.Font.GothamSemibold
+baseBtn.Parent = menu
+Instance.new("UICorner", baseBtn).CornerRadius = UDim.new(0,10)
+
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0.88,0,0,50)
+closeBtn.Position = UDim2.new(0.06,0,0,175)
+closeBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+closeBtn.Text = "Fermer FlareX"
+closeBtn.TextColor3 = Color3.new(1,1,1)
+closeBtn.TextScaled = true
+closeBtn.Font = Enum.Font.GothamSemibold
+closeBtn.Parent = menu
+Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0,10)
+
+local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+local myBase = nil
+
+local function findMyBase()
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v.Name:lower():find("base") or v.Name:lower():find("plot") then
+            local part = v:FindFirstChild("HumanoidRootPart") or v:FindFirstChildWhichIsA("BasePart")
+            if part then 
+                myBase = part
+                return part 
+            end
+        end
+    end
+    return nil
+end
+
+local function getNearestBrainrot()
+    local closest, shortest = nil, math.huge
+    for _, v in ipairs(workspace:GetDescendants()) do
+        if v:IsA("Model") and v:FindFirstChild("Humanoid") and v ~= player.Character then
+            local hrp = v:FindFirstChild("HumanoidRootPart") or v:FindFirstChild("Head")
+            if hrp then
+                local dist = (root.Position - hrp.Position).Magnitude
+                if dist < shortest and dist < 500 then
+                    shortest = dist
+                    closest = hrp
+                end
+            end
+        end
+    end
+    return closest
+end
+
+local function semiTP(target)
+    if not target or not root then return end
+    local dist = (root.Position - target.Position).Magnitude
+    TweenService:Create(root, TweenInfo.new(dist/TP_SPEED, Enum.EasingStyle.Linear), {
+        CFrame = target.CFrame + Vector3.new(0,7,0)
+    }):Play()
+end
+
+local function tpToBase()
+    if not myBase then myBase = findMyBase() end
+    if myBase and root then
+        root.CFrame = myBase.CFrame + Vector3.new(0, 10, 0)
+    end
+end
+
+ProximityPromptService.PromptTriggered:Connect(function(prompt)
+    if prompt.ActionText:lower():find("steal") or prompt.ActionText:lower():find("take") then
+        task.wait(0.4)
+        if AUTO_TP_BASE then tpToBase() end
+    end
+end)
+
+mainButton.MouseButton1Click:Connect(function() menu.Visible = not menu.Visible end)
+
+tpBtn.MouseButton1Click:Connect(function()
+    ENABLED = not ENABLED
+    tpBtn.Text = "Semi TP : " .. (ENABLED and "ON ✅" or "OFF ❌")
+    tpBtn.BackgroundColor3 = ENABLED and Color3.fromRGB(0,170,0) or Color3.fromRGB(30,30,30)
+    if ENABLED then
+        connection = RunService.Heartbeat:Connect(function()
+            if not ENABLED or not root then return end
+            local target = getNearestBrainrot()
+            if target then semiTP(target) end
+        end)
+    else
+        if connection then connection:Disconnect() end
+    end
+end)
+
+baseBtn.MouseButton1Click:Connect(function()
+    AUTO_TP_BASE = not AUTO_TP_BASE
+    baseBtn.Text = "Auto TP Base : " .. (AUTO_TP_BASE and "ON ✅" or "OFF ❌")
+    baseBtn.BackgroundColor3 = AUTO_TP_BASE and Color3.fromRGB(0,170,0) or Color3.fromRGB(30,30,30)
+end)
+
+closeBtn.MouseButton1Click:Connect(function()
+    screenGui:Destroy()
+    if connection then connection:Disconnect() end
+end)
+
+player.CharacterAdded:Connect(function(char)
+    root = char:WaitForChild("HumanoidRootPart")
+end)
+
+print("✅ FlareX chargé avec succès !")
