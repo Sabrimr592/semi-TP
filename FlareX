@@ -1,4 +1,4 @@
--- FlareX V4 Mobile Fix + Aimbot by Grok - Steal a Brainrot
+-- FlareX V5 - Aimbot Fix + Semi TP Choice
 local player = game.Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
@@ -12,6 +12,7 @@ local AUTO_TP_BASE = true
 local AUTO_GRAB = true
 local ESP_ENABLED = true
 local AIMBOT_ENABLED = true
+local TP_MODE = "Nearest"  -- Nearest ou Farthest
 
 local connection = nil
 local TP_SPEED = 195
@@ -36,14 +37,13 @@ mainButton.Font = Enum.Font.GothamBold
 mainButton.Parent = screenGui
 
 Instance.new("UICorner", mainButton).CornerRadius = UDim.new(1, 0)
-local stroke = Instance.new("UIStroke", mainButton)
-stroke.Thickness = 5
-stroke.Color = Color3.fromRGB(0, 255, 200)
+Instance.new("UIStroke", mainButton).Thickness = 5
+Instance.new("UIStroke", mainButton).Color = Color3.fromRGB(0, 255, 200)
 
 -- Menu
 local menu = Instance.new("Frame")
-menu.Size = UDim2.new(0, 280, 0, 400)
-menu.Position = UDim2.new(0.5, -140, 0.5, -200)
+menu.Size = UDim2.new(0, 290, 0, 420)
+menu.Position = UDim2.new(0.5, -145, 0.5, -210)
 menu.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 menu.Visible = false
 menu.Parent = screenGui
@@ -67,20 +67,18 @@ title.InputBegan:Connect(function(input)
         startPos = menu.Position
     end
 end)
-
 UserInputService.InputChanged:Connect(function(input)
     if dragging and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement) then
         local delta = input.Position - dragStart
         menu.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
     end
 end)
-
 title.InputEnded:Connect(function() dragging = false end)
 
 -- Boutons
 local function createBtn(text, posY, color)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0.9,0,0,50)
+    btn.Size = UDim2.new(0.9,0,0,48)
     btn.Position = UDim2.new(0.05,0,0,posY)
     btn.BackgroundColor3 = color
     btn.Text = text
@@ -92,12 +90,13 @@ local function createBtn(text, posY, color)
     return btn
 end
 
-local tpBtn   = createBtn("Semi TP : OFF", 60, Color3.fromRGB(30,30,30))
-local grabBtn = createBtn("Auto Grab : ON", 120, Color3.fromRGB(0,170,0))
-local baseBtn = createBtn("Auto TP Base : ON", 180, Color3.fromRGB(0,170,0))
-local espBtn  = createBtn("ESP Brainrot : ON", 240, Color3.fromRGB(0,170,0))
-local aimBtn  = createBtn("Aimbot Cape : ON", 300, Color3.fromRGB(0,170,0))
-local closeBtn = createBtn("Fermer FlareX", 360, Color3.fromRGB(150,0,0))
+local tpBtn    = createBtn("Semi TP : OFF", 60, Color3.fromRGB(30,30,30))
+local modeBtn  = createBtn("Mode : Nearest", 115, Color3.fromRGB(70,70,70))
+local grabBtn  = createBtn("Auto Grab : ON", 170, Color3.fromRGB(0,170,0))
+local baseBtn  = createBtn("Auto TP Base : ON", 225, Color3.fromRGB(0,170,0))
+local espBtn   = createBtn("ESP Brainrot : ON", 280, Color3.fromRGB(0,170,0))
+local aimBtn   = createBtn("Aimbot Cape : ON", 335, Color3.fromRGB(0,170,0))
+local closeBtn = createBtn("Fermer FlareX", 390, Color3.fromRGB(150,0,0))
 
 -- Fonctions
 local function findMyBase()
@@ -110,21 +109,22 @@ local function findMyBase()
     return nil
 end
 
-local function getNearestTarget()
-    local closest, shortest = nil, math.huge
+local function getNearestOrFarthest()
+    local best, bestDist = nil, TP_MODE == "Nearest" and math.huge or 0
     for _, v in ipairs(workspace:GetDescendants()) do
         if v:IsA("Model") and v:FindFirstChild("Humanoid") and v ~= player.Character then
             local hrp = v:FindFirstChild("HumanoidRootPart") or v:FindFirstChild("Head")
             if hrp then
                 local dist = (root.Position - hrp.Position).Magnitude
-                if dist < shortest and dist < 800 then
-                    shortest = dist
-                    closest = hrp
+                if TP_MODE == "Nearest" then
+                    if dist < bestDist then bestDist = dist best = hrp end
+                else
+                    if dist > bestDist then bestDist = dist best = hrp end
                 end
             end
         end
     end
-    return closest
+    return best
 end
 
 local function semiTP(target)
@@ -137,29 +137,28 @@ end
 
 local function tpToBase()
     if not myBase then myBase = findMyBase() end
-    if myBase and root then
-        root.CFrame = myBase.CFrame + Vector3.new(0, 12, 0)
-    end
+    if myBase and root then root.CFrame = myBase.CFrame + Vector3.new(0, 12, 0) end
 end
 
--- Aimbot (pour la cape Superman)
 local function aimAt(target)
     if not target then return end
     local camera = workspace.CurrentCamera
-    local direction = (target.Position - camera.CFrame.Position).Unit
-    camera.CFrame = CFrame.lookAt(camera.CFrame.Position, target.Position + Vector3.new(0, 2, 0))
+    camera.CFrame = CFrame.lookAt(camera.CFrame.Position, target.Position + Vector3.new(0,2,0))
 end
 
 -- Main Button
-mainButton.Activated:Connect(function()
-    menu.Visible = not menu.Visible
-end)
+mainButton.Activated:Connect(function() menu.Visible = not menu.Visible end)
 
 -- Toggles
 tpBtn.Activated:Connect(function()
     ENABLED = not ENABLED
     tpBtn.Text = "Semi TP : " .. (ENABLED and "ON ✅" or "OFF ❌")
     tpBtn.BackgroundColor3 = ENABLED and Color3.fromRGB(0,170,0) or Color3.fromRGB(30,30,30)
+end)
+
+modeBtn.Activated:Connect(function()
+    TP_MODE = TP_MODE == "Nearest" and "Farthest" or "Nearest"
+    modeBtn.Text = "Mode : " .. TP_MODE
 end)
 
 aimBtn.Activated:Connect(function()
@@ -171,19 +170,16 @@ end)
 grabBtn.Activated:Connect(function()
     AUTO_GRAB = not AUTO_GRAB
     grabBtn.Text = "Auto Grab : " .. (AUTO_GRAB and "ON ✅" or "OFF ❌")
-    grabBtn.BackgroundColor3 = AUTO_GRAB and Color3.fromRGB(0,170,0) or Color3.fromRGB(30,30,30)
 end)
 
 baseBtn.Activated:Connect(function()
     AUTO_TP_BASE = not AUTO_TP_BASE
     baseBtn.Text = "Auto TP Base : " .. (AUTO_TP_BASE and "ON ✅" or "OFF ❌")
-    baseBtn.BackgroundColor3 = AUTO_TP_BASE and Color3.fromRGB(0,170,0) or Color3.fromRGB(30,30,30)
 end)
 
 espBtn.Activated:Connect(function()
     ESP_ENABLED = not ESP_ENABLED
     espBtn.Text = "ESP Brainrot : " .. (ESP_ENABLED and "ON ✅" or "OFF ❌")
-    espBtn.BackgroundColor3 = ESP_ENABLED and Color3.fromRGB(0,170,0) or Color3.fromRGB(30,30,30)
 end)
 
 closeBtn.Activated:Connect(function()
@@ -191,37 +187,32 @@ closeBtn.Activated:Connect(function()
     if connection then connection:Disconnect() end
 end)
 
--- Aimbot + Semi TP Loop
+-- Main Loop
 RunService.Heartbeat:Connect(function()
     if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
         root = player.Character.HumanoidRootPart
     end
 
-    if AIMBOT_ENABLED then
-        local target = getNearestTarget()
-        if target then
-            aimAt(target)
+    -- Aimbot seulement quand on tire (cape Superman)
+    if AIMBOT_ENABLED and player.Character then
+        local tool = player.Character:FindFirstChildOfClass("Tool")
+        if tool and (tool.Name:lower():find("cape") or tool.Name:lower():find("superman")) then
+            local target = getNearestOrFarthest()
+            if target then aimAt(target) end
         end
     end
 
+    -- Semi TP
     if ENABLED then
-        local target = getNearestTarget()
+        local target = getNearestOrFarthest()
         if target then semiTP(target) end
-    end
-
-    if ESP_ENABLED then
-        for _, model in pairs(workspace:GetDescendants()) do
-            if model:IsA("Model") and model:FindFirstChild("Humanoid") and model ~= player.Character then
-                -- ESP simplifié (tu peux garder l'ancien si tu veux)
-            end
-        end
     end
 end)
 
 -- Détection Vol
 ProximityPromptService.PromptTriggered:Connect(function(prompt)
     if prompt.ActionText:lower():find("steal") or prompt.ActionText:lower():find("take") then
-        task.wait(0.7)
+        task.wait(0.65)
         if AUTO_TP_BASE then tpToBase() end
     end
 end)
@@ -230,4 +221,4 @@ player.CharacterAdded:Connect(function(char)
     root = char:WaitForChild("HumanoidRootPart")
 end)
 
-print("✅ FlareX V4 + Aimbot Cape chargé !")
+print("✅ FlareX V5 chargé ! (Aimbot uniquement en tir + Mode Nearest/Farthest)")
